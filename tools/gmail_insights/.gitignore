@@ -1,0 +1,7 @@
+credentials.json
+token.json
+token_send.json
+insights_history.json
+output/
+__pycache__/
+*.pyc
