@@ -26,12 +26,12 @@ doesn't repeat itself.
    - Enable the **Gmail API** (APIs & Services → Library).
    - Configure the **OAuth consent screen** (External, add yourself as a test user).
    - Create **Credentials → OAuth client ID → Desktop app**, download the JSON and save it
-     as `tools/gmail_insights/credentials.json`.
+     as `~/.config/gmail_insights/credentials.json` (outside this repo — see Security below).
 4. **Create the Gmail label** you want to use (e.g. `Insights`) and add a filter so your
    newsletters (Lenny's Newsletter, Stratechery, HBR, etc.) are labelled automatically.
 
 The first run opens a browser so you can approve read-only access. The token is saved
-locally (`token.json`) and reused afterwards.
+to `~/.config/gmail_insights/token.json` (owner-only permissions) and reused afterwards.
 
 ## Run
 
@@ -43,7 +43,7 @@ python gmail_insights.py --label "Insights" --email-me   # also email the result
 
 Nested labels use a slash: `--label "PM/Reading"`.
 
-Results print to the terminal and are saved to `output/insights_YYYY-MM-DD.md`.
+Results print to the terminal and are saved to `~/.config/gmail_insights/output/insights_YYYY-MM-DD.md`.
 `--email-me` asks for an extra Gmail *send* permission the first time it is used.
 
 ## Run it every morning
@@ -64,4 +64,19 @@ Run the script once by hand first so the Gmail token exists.
 - Very long emails are clipped to 20,000 characters each (noted in the output); use
   `--max-emails` to cap how many emails are read (default 50).
 - Uses the `claude-opus-5-5` model; change `MODEL` in `gmail_insights.py` to use another.
-- `credentials.json`, tokens, history and output are git-ignored.
+
+## Security
+
+This code is safe to keep in a **public** repo: it contains no keys, passwords or tokens.
+Your secrets only exist on your own computer, and the tool keeps them **outside the repo**
+in `~/.config/gmail_insights/` (override with `GMAIL_INSIGHTS_HOME`), so they can't be
+committed by accident. Never commit or share:
+
+- `credentials.json` (your Google OAuth client)
+- `token.json` / `token_send.json` — **anyone with this file can read your Gmail**
+- your `ANTHROPIC_API_KEY`
+
+If one ever leaks: revoke the app at <https://myaccount.google.com/permissions>, delete the
+OAuth client in Google Cloud Console, and rotate the API key at
+<https://console.anthropic.com/settings/keys>. Also turn on 2-Step Verification for your
+Google account.

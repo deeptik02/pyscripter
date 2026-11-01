@@ -24,6 +24,7 @@ import base64
 import datetime as dt
 import html
 import json
+import os
 import re
 import sys
 from email.mime.text import MIMEText
@@ -35,10 +36,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-HERE = Path(__file__).resolve().parent
-CREDENTIALS_FILE = HERE / "credentials.json"  # OAuth client from Google Cloud Console
-HISTORY_FILE = HERE / "insights_history.json"
-OUTPUT_DIR = HERE / "output"
+# Secrets and personal data live OUTSIDE the repo so they can never be committed.
+DATA_DIR = Path(os.environ.get("GMAIL_INSIGHTS_HOME", Path.home() / ".config" / "gmail_insights"))
+CREDENTIALS_FILE = DATA_DIR / "credentials.json"  # OAuth client from Google Cloud Console
+HISTORY_FILE = DATA_DIR / "insights_history.json"
+OUTPUT_DIR = DATA_DIR / "output"
 
 READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
@@ -108,7 +110,8 @@ well-established knowledge and leave `sources` empty.
 # --------------------------------------------------------------------------- Gmail
 
 def gmail_service(scopes: list[str]):
-    token_file = HERE / ("token_send.json" if SEND_SCOPE in scopes else "token.json")
+    DATA_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+    token_file = DATA_DIR / ("token_send.json" if SEND_SCOPE in scopes else "token.json")
     creds = None
     if token_file.exists():
         creds = Credentials.from_authorized_user_file(str(token_file), scopes)
@@ -124,6 +127,7 @@ def gmail_service(scopes: list[str]):
             flow = InstalledAppFlow.from_client_secrets_file(str(CREDENTIALS_FILE), scopes)
             creds = flow.run_local_server(port=0)
         token_file.write_text(creds.to_json())
+        token_file.chmod(0o600)  # the token grants Gmail access: owner-only
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
 
 
@@ -306,7 +310,7 @@ def main() -> None:
     save_history(history, today, insights)
 
     markdown = to_markdown(insights, today, args.label, emails)
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = OUTPUT_DIR / f"insights_{today}.md"
     out_file.write_text(markdown)
     print(markdown)
